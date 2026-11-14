@@ -43,7 +43,83 @@ export interface Tx {
   applePay?: boolean; // linked to an Apple Pay automation
   reconciled?: boolean; // matched to a CSV row
   csvKey?: string;
+  /** trip id when chosen by hand; with tripLocked and no trip = excluded by hand */
+  trip?: string;
+  tripLocked?: boolean;
   updatedAt: number;
+}
+
+export interface Trip {
+  id: string;
+  name: string;
+  words: string[];
+  start: string;
+  end: string;
+}
+
+export interface Position {
+  id: string;
+  ticker: string;
+  units: number;
+  account: string;
+  name?: string;
+}
+
+export interface Holding {
+  id: string;
+  name: string;
+  account: string;
+  kind: 'cash' | 'fund' | 'managed';
+  currency: Currency;
+  values: { date: string; value: number }[];
+}
+
+export interface Quote {
+  price: number;
+  prev: number;
+  currency: string;
+  date: string;
+}
+
+export interface Goal {
+  id: string;
+  name: string;
+  icon: string;
+  target: number; // CAD
+  source: 'investments' | 'manual';
+  saved?: number; // CAD, when manual
+}
+
+export interface Review {
+  month: string;
+  reflection: string;
+  change: string;
+  stuck?: 'yes' | 'partly' | 'no';
+  savedAt: number;
+}
+
+export interface Challenge {
+  id: string;
+  type: string;
+  start: string;
+  end: string;
+}
+
+export interface InvestLogEntry {
+  id: string;
+  date: string;
+  amount: number;
+  currency: Currency;
+  note?: string;
+}
+
+export interface NotifyPrefs {
+  cardDue: boolean;
+  allowance: boolean;
+  monday: boolean;
+  sunday: boolean;
+  review: boolean;
+  challenge: boolean;
 }
 
 export interface Rule {
@@ -99,6 +175,18 @@ export interface Vault {
   fx: { rate: number; date: string };
   privateKeyJwk: JsonWebKey | null;
   ingestToken?: string;
+  trips: Trip[];
+  positions: Position[];
+  holdings: Holding[];
+  quotes: Record<string, Quote>;
+  /** opening balances for net worth, in the account's currency (cards negative = owed) */
+  balances: Record<string, { date: string; balance: number }>;
+  goals: Goal[];
+  reviews: Review[];
+  challenges: Challenge[];
+  investLog: InvestLogEntry[];
+  lastInvestCheck?: string;
+  notify: NotifyPrefs;
   deleted: string[];
   seenInbox: string[];
   createdAt: number;

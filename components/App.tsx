@@ -16,6 +16,10 @@ import Home from './Home';
 import Activity from './Activity';
 import Budget from './Budget';
 import Settings from './Settings';
+import Insights from './Insights';
+import Invest from './Invest';
+import { buildPushPlan } from '@/lib/pushClient';
+import type { Quote } from '@/lib/types';
 import TxSheet from './TxSheet';
 import ImportSheet from './ImportSheet';
 
@@ -88,6 +92,7 @@ export default function App() {
           throw new ApiError(r.status, `Save failed (${r.status})`);
         }
         setSyncState(dirtyRef.current ? 'error' : 'idle');
+        if (!dirtyRef.current) void syncPushPlanRef.current();
       } catch (e) {
         dirtyRef.current = true;
         setSyncState(navigator.onLine ? 'error' : 'offline');
@@ -99,6 +104,7 @@ export default function App() {
     savingRef.current = null;
   }, []);
 
+  const syncPushPlanRef = useRef<() => Promise<void>>(async () => {});
   const update = useCallback(
     (fn: (v: Vault) => void) => {
       if (!vaultRef.current) return;
@@ -153,13 +159,48 @@ export default function App() {
     } catch {}
   }, [update]);
 
+  const refreshQuotes = useCallback(
+    async (force = false) => {
+      const v = vaultRef.current;
+      const s = sessionRef.current;
+      if (!v || !s) return;
+      const tickers = v.positions.filter((p) => p.units > 0).map((p) => p.ticker);
+      if (!tickers.length) return;
+      const stamp = v.quotes['CAD=X']?.date;
+      if (!force && stamp && Date.now() - Number(new Date(stamp)) < 3 * 3600e3) return;
+      const { quotes } = await api<{ quotes: Record<string, Quote> }>(`/api/quotes?t=${encodeURIComponent([...tickers, 'CAD=X'].join(','))}`, { token: s.token });
+      if (!Object.keys(quotes).length) return;
+      update((d) => {
+        d.quotes = { ...d.quotes, ...quotes };
+        // CAD=X's date doubles as the "last refreshed" time.
+        if (d.quotes['CAD=X']) d.quotes['CAD=X'] = { ...d.quotes['CAD=X'], date: new Date().toISOString() };
+      });
+    },
+    [update],
+  );
+
+  // Keep the server's small reminder plan (plaintext) in step with the vault.
+  const lastPlanRef = useRef('');
+  const syncPushPlan = useCallback(async () => {
+    const v = vaultRef.current;
+    const s = sessionRef.current;
+    if (!v || !s) return;
+    const plan = JSON.stringify(buildPushPlan(v));
+    if (plan === lastPlanRef.current) return;
+    try {
+      await api('/api/push/plan', { method: 'PUT', token: s.token, body: JSON.parse(plan) });
+      lastPlanRef.current = plan;
+    } catch {}
+  }, []);
+
   const housekeeping = useCallback(async () => {
     const v = vaultRef.current;
     if (!v) return;
     const draft = structuredClone(v);
     if (postBills(draft) > 0) update((d) => void postBills(d));
-    await Promise.allSettled([refreshFx(), processInbox()]);
-  }, [processInbox, refreshFx, update]);
+    await Promise.allSettled([refreshFx(), processInbox(), refreshQuotes()]);
+    await syncPushPlan();
+  }, [processInbox, refreshFx, refreshQuotes, syncPushPlan, update]);
 
   /** Pull the latest version from the server (another device may have saved). */
   const pull = useCallback(async () => {
@@ -217,6 +258,7 @@ export default function App() {
       setPhase('locked');
     });
   }, [flush]);
+  syncPushPlanRef.current = syncPushPlan;
   const lockRef = useRef(lock);
   lockRef.current = lock;
 
@@ -301,9 +343,10 @@ export default function App() {
             remembered,
             setRemembered,
             toast,
+            refreshQuotes,
           }
         : null,
-    [vault, update, syncState, meta, setTab, lock, syncNow, remembered, setRemembered, toast],
+    [vault, update, syncState, meta, setTab, lock, syncNow, remembered, setRemembered, toast, refreshQuotes],
   );
 
   const showSplash = !splashDone || phase === 'boot';
@@ -342,13 +385,16 @@ export default function App() {
               {tab === 'activity' && <Activity />}
               {tab === 'budget' && <Budget />}
               {tab === 'settings' && <Settings />}
+              {tab === 'insights' && <Insights />}
+              {tab === 'invest' && <Invest />}
             </main>
             <nav className="tabbar">
               {([
                 ['home', 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z', 'Home'],
                 ['activity', 'M4 6h16M4 12h16M4 18h10', 'Activity'],
                 ['budget', 'M12 3a9 9 0 1 0 9 9h-9zM15 3.5A9 9 0 0 1 20.5 9H15z', 'Budget'],
-                ['settings', 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-1.7-1L15 3.5h-4L10.6 6a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.4z', 'Settings'],
+                ['insights', 'M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z', 'Insights'],
+                ['invest', 'M3 17l6-6 4 4 8-8M15 7h6v6', 'Invest'],
               ] as const).map(([id, d, label]) => (
                 <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>
                   <svg className="ti" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={d} /></svg>

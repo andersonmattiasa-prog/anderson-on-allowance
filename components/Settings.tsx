@@ -7,6 +7,65 @@ import { exportCSV } from '@/lib/csv';
 import { download, todayStr } from '@/lib/util';
 import { idbGet } from '@/lib/idb';
 import { GMAIL_SCRIPT } from '@/lib/gmail-script';
+import { currentSubscription, disablePush, enablePush, pushSupported } from '@/lib/pushClient';
+import type { NotifyPrefs } from '@/lib/types';
+
+const NOTIFY_LABELS: [keyof NotifyPrefs, string][] = [
+  ['cardDue', 'Card payment due (3 days, 1 day, on the day — skipped for autopay)'],
+  ['allowance', 'Allowance at 80% and 100%, right after an Apple Pay purchase'],
+  ['monday', 'Monday: this week’s allowance'],
+  ['sunday', 'Sunday: week recap'],
+  ['review', 'Monthly review reminder (1st–3rd)'],
+  ['challenge', 'Challenge start and last day'],
+];
+
+function Notifications() {
+  const { vault: v, update, token, toast } = useStore();
+  const [on, setOn] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    currentSubscription().then((s) => setOn(!!s)).catch(() => setOn(false));
+  }, []);
+  async function toggle() {
+    setBusy(true);
+    try {
+      if (on) {
+        await disablePush(token);
+        setOn(false);
+      } else {
+        const err = await enablePush(token);
+        if (err) toast(err);
+        else setOn(true);
+      }
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Couldn’t change notifications');
+    }
+    setBusy(false);
+  }
+  return (
+    <section className="card">
+      <h3>Notifications</h3>
+      {!pushSupported() ? (
+        <p className="muted small">Open Allowance from your Home Screen icon to turn on notifications (iPhone needs the installed app).</p>
+      ) : (
+        <div className="form">
+          <button className={`btn wide ${on ? '' : 'primary'}`} disabled={busy || on === null} onClick={toggle}>
+            {on ? 'Turn off on this device' : 'Turn on notifications'}
+          </button>
+          {on && <button className="btn wide" onClick={() => api('/api/push/test', { method: 'POST', token }).then(() => toast('Test sent')).catch((e) => toast(e.message))}>Send a test</button>}
+        </div>
+      )}
+      <div className="form" style={{ marginTop: 10 }}>
+        {NOTIFY_LABELS.map(([k, label]) => (
+          <label key={k} className="check">
+            <input type="checkbox" checked={v.notify[k]} onChange={(e) => update((d) => void (d.notify[k] = e.target.checked))} /> {label}
+          </label>
+        ))}
+        <p className="muted small">To send reminders while your data stays encrypted, the server keeps only: your weekly allowance and this week’s total, card due days, the active challenge’s name and which month needs a review.</p>
+      </div>
+    </section>
+  );
+}
 
 function NumberField({ label, value, onSave, suffix, placeholder }: { label: string; value?: number; onSave: (n: number | undefined) => void; suffix?: string; placeholder?: string }) {
   return (
@@ -46,7 +105,7 @@ function Copy({ text, label = 'Copy' }: { text: string; label?: string }) {
 }
 
 export default function Settings() {
-  const { vault: v, update, token, lock, remembered, setRemembered, toast, syncNow, storage } = useStore();
+  const { vault: v, update, token, lock, remembered, setRemembered, toast, syncNow, storage, setTab } = useStore();
   const [origin, setOrigin] = useState('');
   useEffect(() => setOrigin(location.origin), []);
   const s = v.settings;
@@ -71,13 +130,14 @@ export default function Settings() {
 
   return (
     <div className="page">
-      <header className="page-head"><h1>Settings</h1></header>
+      <header className="page-head"><h1>Settings</h1><button className="link" onClick={() => setTab('home')}>Done</button></header>
 
       <section className="card">
         <h3>Your plan</h3>
         <div className="form">
           <NumberField label={`Monthly pay (${s.primary})`} value={s.income} onSave={(n) => n && update((d) => void (d.settings.income = n))} />
           <NumberField label="Invest from each paycheck" value={s.investPercent} suffix="%" onSave={(n) => n != null && update((d) => void (d.settings.investPercent = Math.min(90, Math.max(0, n))))} />
+          <NumberField label="Assumed yearly investment return" value={s.assumedReturn} suffix="%" onSave={(n) => n != null && update((d) => void (d.settings.assumedReturn = Math.min(20, Math.max(0, n))))} />
           <NumberField label="Weekly allowance (leave empty to calculate)" value={s.weeklyAllowance} placeholder="Automatic" onSave={(n) => update((d) => void (d.settings.weeklyAllowance = n && n > 0 ? n : undefined))} />
           <label className="field">
             <span>Home places (words that mean “not a trip”)</span>
@@ -158,6 +218,8 @@ export default function Settings() {
           </>
         )}
       </section>
+
+      <Notifications />
 
       <section className="card">
         <h3>Learned rules</h3>

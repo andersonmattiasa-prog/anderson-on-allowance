@@ -1,6 +1,9 @@
 import { randomUUID } from 'crypto';
 import { bearer, getMeta, json, safeEqual, seal, sha256 } from '@/lib/server/auth';
 import { hlen, hset } from '@/lib/server/store';
+import { getPlan, localToday, savePlan, sendAll } from '@/lib/server/push';
+import { parseAmount } from '@/lib/money';
+import { weekStart } from '@/lib/util';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,5 +32,30 @@ export async function POST(req: Request, ctx: { params: Promise<{ source: string
 
   const item = { id: randomUUID(), at: Date.now(), source, ...(await seal(meta.publicKey, payload)) };
   await hset('inbox', item.id, JSON.stringify(item));
+  if (source === 'applepay') await allowanceWarning(payload).catch(() => {});
   return json({ ok: true });
+}
+
+/** The Apple Pay amount is read here only to warn at 80% / 100% of the weekly allowance. */
+async function allowanceWarning(payload: unknown) {
+  const plan = await getPlan();
+  if (!plan || !plan.prefs.allowance || !plan.weekly) return;
+  const raw = (payload as Record<string, unknown>)?.amount;
+  const a = parseAmount(String(raw ?? ''));
+  if (!a || !a.amount) return;
+  const cur = a.currency ?? plan.primary;
+  const amt = Math.abs(cur === plan.primary ? a.amount : cur === 'EUR' ? a.amount * plan.fxRate : a.amount / plan.fxRate);
+  const ws = weekStart(localToday(plan.tz).date);
+  if (plan.weekStart !== ws) Object.assign(plan, { weekStart: ws, weekSpent: 0, warned: 0 });
+  plan.weekSpent += amt;
+  const pct = (plan.weekSpent / plan.weekly) * 100;
+  const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: plan.primary }).format(n);
+  if (pct >= 100 && plan.warned < 100) {
+    plan.warned = 100;
+    await sendAll({ title: 'Over this week’s allowance', body: `You've spent ${fmt(plan.weekSpent)} of ${fmt(plan.weekly)}. Try a no-spend day tomorrow.`, tag: 'allowance' });
+  } else if (pct >= 80 && plan.warned < 80) {
+    plan.warned = 80;
+    await sendAll({ title: '80% of your allowance', body: `${fmt(plan.weekly - plan.weekSpent)} left for the rest of the week.`, tag: 'allowance' });
+  }
+  await savePlan(plan);
 }

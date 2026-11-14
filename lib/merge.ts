@@ -21,12 +21,23 @@ export function mergeVaults(local: Vault, remote: Vault): Vault {
   for (const r of remote.rules) rules.set(r.match, r);
   for (const r of local.rules) rules.set(r.match, r);
 
+  const union = <T,>(a: T[], b: T[], key: (x: T) => string) => {
+    const m = new Map<string, T>();
+    for (const x of b) m.set(key(x), x);
+    for (const x of a) m.set(key(x), x);
+    return [...m.values()].filter((x) => !gone.has(key(x)));
+  };
+
   return {
     ...remote,
     ...local,
     transactions,
     deleted,
     rules: [...rules.values()].filter((r) => !gone.has(`rule:${r.match}`)),
+    trips: union(local.trips, remote.trips, (t) => `trip:${t.id}`),
+    reviews: union(local.reviews, remote.reviews, (r) => `review:${r.month}`),
+    investLog: union(local.investLog, remote.investLog, (r) => `invest:${r.id}`),
+    challenges: union(local.challenges, remote.challenges, (c) => `challenge:${c.id}`),
     seenInbox: Array.from(new Set([...remote.seenInbox, ...local.seenInbox])).slice(-3000),
     updatedAt: Math.max(local.updatedAt, remote.updatedAt),
   };

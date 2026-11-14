@@ -4,7 +4,7 @@ import type { Vault } from '@/lib/types';
 import { fmt } from '@/lib/money';
 import { toSecondary } from '@/lib/calc';
 
-export type Tab = 'home' | 'activity' | 'budget' | 'settings';
+export type Tab = 'home' | 'activity' | 'budget' | 'insights' | 'invest' | 'settings';
 export type SheetState = { type: 'tx'; id: string } | { type: 'add' } | { type: 'import' } | null;
 export type SyncState = 'idle' | 'saving' | 'offline' | 'error';
 
@@ -21,6 +21,7 @@ export interface StoreValue {
   remembered: boolean;
   setRemembered: (on: boolean) => Promise<void>;
   toast: (msg: string) => void;
+  refreshQuotes: (force?: boolean) => Promise<void>;
 }
 
 export const StoreCtx = createContext<StoreValue | null>(null);

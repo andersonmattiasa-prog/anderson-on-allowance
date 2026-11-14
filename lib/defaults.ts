@@ -1,4 +1,4 @@
-import type { Account, Bill, Category, Settings, Vault } from './types';
+import type { Account, Bill, Category, Goal, Holding, NotifyPrefs, Position, Settings, Vault } from './types';
 import { todayStr } from './util';
 
 export const DEFAULT_CATEGORIES: Category[] = [
@@ -45,6 +45,27 @@ export const DEFAULT_SETTINGS: Settings = {
   homePlaces: ['brussels', 'bruxelles', 'brussel', 'ixelles', 'elsene', 'etterbeek', 'saint gilles', 'schaerbeek', 'uccle', 'woluwe'],
 };
 
+export const DEFAULT_POSITIONS: Position[] = ['BEPC.TO', 'BMO.TO', 'CVE.TO', 'CVX', 'FLNC', 'FTS.TO', 'NTR.TO', 'GM'].map((ticker) => ({
+  id: ticker,
+  ticker,
+  units: 0,
+  account: 'odlum',
+}));
+
+export const DEFAULT_HOLDINGS: Holding[] = [
+  { id: 'odlum-cash', name: 'Odlum Brown cash', account: 'odlum', kind: 'cash', currency: 'CAD', values: [] },
+  { id: 'rbf554', name: 'RBF554 fund', account: 'odlum', kind: 'fund', currency: 'CAD', values: [] },
+  { id: 'ws-tfsa', name: 'Wealthsimple TFSA (managed)', account: 'wealthsimple', kind: 'managed', currency: 'CAD', values: [] },
+];
+
+export const DEFAULT_GOALS: Goal[] = [
+  { id: 'home', name: 'Home down payment', icon: '🏡', target: 138000, source: 'investments' },
+  { id: 'trip', name: 'Next trip', icon: '✈️', target: 1500, source: 'manual', saved: 0 },
+  { id: 'emergency', name: 'Emergency fund', icon: '🛟', target: 5000, source: 'manual', saved: 0 },
+];
+
+export const DEFAULT_NOTIFY: NotifyPrefs = { cardDue: true, allowance: true, monday: true, sunday: true, review: true, challenge: true };
+
 export function defaultVault(privateKeyJwk: JsonWebKey | null): Vault {
   const now = Date.now();
   return {
@@ -58,6 +79,16 @@ export function defaultVault(privateKeyJwk: JsonWebKey | null): Vault {
     importMappings: [],
     fx: { rate: 1.57, date: '2000-01-01' },
     privateKeyJwk,
+    trips: [],
+    positions: DEFAULT_POSITIONS.map((p) => ({ ...p })),
+    holdings: DEFAULT_HOLDINGS.map((h) => ({ ...h, values: [] })),
+    quotes: {},
+    balances: {},
+    goals: DEFAULT_GOALS.map((g) => ({ ...g })),
+    reviews: [],
+    challenges: [],
+    investLog: [],
+    notify: { ...DEFAULT_NOTIFY },
     deleted: [],
     seenInbox: [],
     createdAt: now,
@@ -72,13 +103,16 @@ export function normalize(raw: Partial<Vault> | null | undefined): Vault {
   const d = defaultVault(raw?.privateKeyJwk ?? null);
   const v: Vault = { ...d, ...(raw || {}) } as Vault;
   v.settings = { ...d.settings, ...(raw?.settings || {}) };
-  for (const k of ['accounts', 'categories', 'rules', 'bills', 'transactions', 'importMappings', 'deleted', 'seenInbox'] as const) {
+  for (const k of ['accounts', 'categories', 'rules', 'bills', 'transactions', 'importMappings', 'deleted', 'seenInbox', 'trips', 'positions', 'holdings', 'goals', 'reviews', 'challenges', 'investLog'] as const) {
     if (!Array.isArray(v[k])) (v as unknown as Record<string, unknown>)[k] = (d as unknown as Record<string, unknown>)[k];
   }
   for (const id of CORE_CATEGORIES) {
     if (!v.categories.some((c) => c.id === id)) v.categories.push({ ...DEFAULT_CATEGORIES.find((c) => c.id === id)! });
   }
   if (!v.accounts.some((a) => a.id === 'cash')) v.accounts.push({ ...DEFAULT_ACCOUNTS.find((a) => a.id === 'cash')! });
+  if (!v.quotes || typeof v.quotes !== 'object') v.quotes = {};
+  if (!v.balances || typeof v.balances !== 'object') v.balances = {};
+  v.notify = { ...DEFAULT_NOTIFY, ...(raw?.notify || {}) };
   if (!v.fx || !v.fx.rate) v.fx = { rate: 1.57, date: '2000-01-01' };
   return v;
 }

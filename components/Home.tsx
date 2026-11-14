@@ -3,7 +3,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMoney, useStore } from './store';
 import { Empty, Progress, TxRow } from './ui';
 import { cardAlerts, catMap, dailyVariable, dayNet, greenStreak, monthStats, plan, trend } from '@/lib/calc';
-import { addDays, addMonths, monthLabel, monthOf, todayStr, weekdayShort, weekStart } from '@/lib/util';
+import { addDays, addMonths, monthLabel, monthOf, parseDate, todayStr, weekdayShort, weekStart } from '@/lib/util';
+import { futureValue, monthsToGoal, portfolio } from '@/lib/invest';
+import { CHALLENGES, challengeStartDate, challengeStatus, streaks } from '@/lib/streaks';
+import { fmt, toCur } from '@/lib/money';
+import { Sheet } from './ui';
 
 function useInstallHint() {
   const [show, setShow] = useState(false);
@@ -87,7 +91,12 @@ export default function Home() {
           <p className="eyebrow">{monthLabel(month)}</p>
           <h1>Anderson on Allowance</h1>
         </div>
+        <button className="icon-btn gear" aria-label="Settings" onClick={() => setTab('settings')}>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-1.7-1L15 3.5h-4L10.6 6a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.4z" /></svg>
+        </button>
       </header>
+
+      <GoalCard />
 
       {install.show && (
         <div className="card install">
@@ -170,6 +179,10 @@ export default function Home() {
         </p>
       </section>
 
+      <OtherAlerts />
+
+      <StreaksCard />
+
       {d.insight && <div className="card insight">💡 {d.insight}</div>}
 
       {d.watch.length > 0 && (
@@ -223,5 +236,121 @@ export default function Home() {
         {d.recent.length ? d.recent.map((t) => <TxRow key={t.id} t={t} />) : <Empty>No purchases yet.</Empty>}
       </section>
     </div>
+  );
+}
+
+function GoalCard() {
+  const { vault: v, setTab } = useStore();
+  const goal = v.goals[0];
+  if (!goal) return null;
+  const pf = portfolio(v);
+  const saved = goal.source === 'investments' ? pf.total : goal.saved || 0;
+  const monthly = toCur((v.settings.income * v.settings.investPercent) / 100, v.settings.primary, 'CAD', v.fx.rate);
+  const months = monthsToGoal(saved, monthly, goal.target, v.settings.assumedReturn);
+  // "Skip one meal out a week" — average meal out over the last 3 months, invested for 10 years.
+  const cutoff = addDays(todayStr(), -90);
+  const meals = v.transactions.filter((t) => t.date >= cutoff && (t.category === 'eating-out' || t.category === 'takeaway') && t.amount < 0);
+  const avgMeal = meals.length ? meals.reduce((a, t) => a + Math.abs(toCur(t.amount, t.currency, 'CAD', v.fx.rate)), 0) / meals.length : 25;
+  const tenYears = futureValue((avgMeal * 52) / 12, 10, v.settings.assumedReturn);
+  const cad = (n: number) => fmt(n, 'CAD', { decimals: 0 });
+  return (
+    <button className="card goal-card plain-card" onClick={() => setTab('invest')}>
+      <div className="row between">
+        <span className="eyebrow">{goal.icon} {goal.name}</span>
+        <span className="small muted">{Math.min(100, Math.round((saved / goal.target) * 100))}%</span>
+      </div>
+      <div className="mid">{saved >= goal.target ? 'Goal reached 🎉' : `${cad(goal.target - saved)} to go`}</div>
+      <Progress value={saved} max={goal.target} tone="good" />
+      <p className="small muted">
+        {months != null && saved < goal.target ? `About ${months >= 12 ? `${(months / 12).toFixed(1)} years` : `${months} months`} at your current pace. ` : ''}
+        Skip one meal out a week = {cad(tenYears)} in 10 years.
+      </p>
+    </button>
+  );
+}
+
+function OtherAlerts() {
+  const { vault: v, setTab } = useStore();
+  const today = todayStr();
+  const last = addMonths(monthOf(today), -1);
+  const needsReview = !v.reviews.some((r) => r.month === last) && v.transactions.some((t) => t.date.startsWith(last));
+  const hasHoldings = v.positions.some((p) => p.units > 0) || v.holdings.some((h) => h.values.length);
+  const checkDue = hasHoldings && (!v.lastInvestCheck || (parseDate(today).getTime() - parseDate(v.lastInvestCheck).getTime()) / 864e5 > 30);
+  return (
+    <>
+      {needsReview && (
+        <button className="card alert warn plain-card" onClick={() => setTab('insights')}>
+          📝 <strong>Review {monthLabel(last, 'long')}</strong> — 3 minutes on what went well and one change.
+        </button>
+      )}
+      {checkDue && (
+        <button className="card alert plain-card" onClick={() => setTab('invest')}>
+          📋 <strong>Monthly investment check</strong> — update share counts and fund values.
+        </button>
+      )}
+    </>
+  );
+}
+
+function StreaksCard() {
+  const { vault: v, update } = useStore();
+  const [picking, setPicking] = useState(false);
+  const today = todayStr();
+  const st = streaks(v, today);
+  const green = greenStreak(v, dailyVariable(v), today);
+  const statuses = v.challenges.map((c) => ({ c, s: challengeStatus(v, c, today) })).filter((x) => x.s);
+  const current = statuses.find((x) => x.s!.state === 'active' || x.s!.state === 'upcoming');
+  const recent = statuses.filter((x) => x.s!.state !== 'active' && x.s!.state !== 'upcoming' && x.c.end >= addDays(today, -7));
+  const { p } = useMoney();
+
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h3>Streaks</h3>
+      </div>
+      <div className="streaks">
+        <div><strong>{green}</strong><span>green days</span></div>
+        <div><strong>{st.noSpend}</strong><span>no-spend days</span></div>
+        <div><strong>{st.weeksUnder}</strong><span>weeks under</span></div>
+        <div><strong>{st.monthsInvested}</strong><span>months invested</span></div>
+      </div>
+      {current ? (
+        <div className="challenge">
+          <div className="row between">
+            <strong>{current.s!.def.icon} {current.s!.def.name}</strong>
+            <span className="chip good">{current.s!.state === 'upcoming' ? 'starts soon' : `${current.s!.daysLeft} day${current.s!.daysLeft === 1 ? '' : 's'} left`}</span>
+          </div>
+          <p className="muted small">
+            {current.s!.def.blurb} {current.s!.limit > 0 ? `${p(current.s!.used)} of ${p(current.s!.limit, 0)} used.` : current.s!.used > 0 ? '' : 'Clean so far 👌'}
+          </p>
+          <button className="link small" onClick={() => update((d) => { d.challenges = d.challenges.filter((x) => x.id !== current.c.id); d.deleted.push(`challenge:${current.c.id}`); })}>Give up</button>
+        </div>
+      ) : (
+        <button className="btn small" onClick={() => setPicking(true)}>Start a challenge</button>
+      )}
+      {recent.map(({ c, s }) => (
+        <p key={c.id} className="small">{s!.state === 'won' ? `🏆 You won “${s!.def.name}”!` : `“${s!.def.name}” didn’t work out this time — try again?`}</p>
+      ))}
+      {picking && (
+        <Sheet title="Pick a challenge" onClose={() => setPicking(false)}>
+          <div className="form">
+            {CHALLENGES.map((ch) => (
+              <button
+                key={ch.type}
+                className="card plain-card challenge-pick"
+                onClick={() => {
+                  const start = challengeStartDate(ch.type, today);
+                  update((d) => void d.challenges.push({ id: crypto.randomUUID(), type: ch.type, start, end: addDays(start, ch.days - 1) }));
+                  setPicking(false);
+                }}
+              >
+                <strong>{ch.icon} {ch.name}</strong>
+                <span className="muted small">{ch.blurb}</span>
+              </button>
+            ))}
+          </div>
+        </Sheet>
+      )}
+    </section>
   );
 }
