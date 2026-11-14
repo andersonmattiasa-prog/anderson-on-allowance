@@ -32,7 +32,7 @@ export function Unlock({ salt, onUnlock }: { salt: string; onUnlock: (s: Session
   return (
     <div className="lock">
       <form className="lock-card" ref={formRef} onSubmit={submit}>
-        <div className="lock-coin">A</div>
+        <img className="lock-mark" src="/icons/mark.png" alt="" width={64} height={65} />
         <h1>Anderson on Allowance</h1>
         <p className="muted">Your data is encrypted on this device. Enter your passphrase to unlock.</p>
         <input type="text" name="username" autoComplete="username" value="Allowance" readOnly hidden />
@@ -80,7 +80,7 @@ export function Setup({ meta, onDone }: { meta: MetaInfo; onDone: (s: Session, r
   return (
     <div className="lock">
       <form className="lock-card" ref={formRef} onSubmit={submit}>
-        <div className="lock-coin">A</div>
+        <img className="lock-mark" src="/icons/mark.png" alt="" width={64} height={65} />
         <h1>Create your vault</h1>
         <p className="muted">
           Everything is encrypted in your browser with this passphrase before it’s saved. The server only stores scrambled data.

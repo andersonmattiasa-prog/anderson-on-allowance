@@ -8,6 +8,10 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
   appleWebApp: { capable: true, title: 'Allowance', statusBarStyle: 'black-translucent' },
   formatDetection: { telephone: false },
+  icons: {
+    icon: [{ url: '/icons/favicon-64.png', sizes: '64x64', type: 'image/png' }],
+    apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180' }],
+  },
 };
 
 export const viewport: Viewport = {
@@ -15,7 +19,10 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: 'cover',
-  themeColor: '#0b3d2e',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f5f8fc' },
+    { media: '(prefers-color-scheme: dark)', color: '#07111f' },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -1,5 +1,5 @@
 // Service worker: makes the home-screen app open instantly and work offline (read-only), and shows push notifications.
-const CACHE = 'allowance-v1';
+const CACHE = 'allowance-v2';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/'])).catch(() => {}));
@@ -37,7 +37,7 @@ self.addEventListener('fetch', (e) => {
   }
 
   // Build assets and icons are immutable: cache first.
-  if (url.pathname.startsWith('/_next/static/') || url.pathname.startsWith('/pwa-icon') || url.pathname.startsWith('/apple-icon')) {
+  if (url.pathname.startsWith('/_next/static/') || url.pathname.startsWith('/icons/')) {
     e.respondWith(
       caches.match(req).then(
         (hit) =>
@@ -64,8 +64,8 @@ self.addEventListener('push', (e) => {
   e.waitUntil(
     self.registration.showNotification(d.title || 'Allowance', {
       body: d.body || '',
-      icon: '/pwa-icon/192',
-      badge: '/pwa-icon/192',
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
       tag: d.tag,
       data: { url: d.url || '/' },
     }),
