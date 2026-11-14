@@ -1,11 +1,11 @@
 :root {
   /* Anderson brand: deep navy → bright blue, from the dollar-and-arrow logo */
-  --brand-900: #00336f;
-  --brand-800: #00469a;
-  --brand-700: #0054b3;
-  --brand-500: #1589fc;
-  --brand-300: #8cc4ff;
-  --brand-100: #e3f0ff;
+  --brand-900: #0b55c2;
+  --brand-800: #0d63d6;
+  --brand-700: #1473e6;
+  --brand-500: #3b9bff;
+  --brand-300: #9fcdff;
+  --brand-100: #e6f2ff;
 
   --bg: #f5f8fc;
   --surface: #ffffff;
@@ -22,8 +22,8 @@
   --good-bg: #e2f5eb;
   --warn-bg: #fdf1d8;
   --bad-bg: #fde6e6;
-  --hero-pos: #a8f0c9;
-  --hero-neg: #ffc2c2;
+  --hero-pos: #ffffff;
+  --hero-neg: #ffffff;
   --shadow: 0 1px 2px rgba(0, 40, 90, 0.06), 0 6px 18px rgba(0, 40, 90, 0.05);
   color-scheme: light;
 }
@@ -36,8 +36,8 @@
     --text: #e8eef8;
     --muted: #8ea0bb;
     --line: #1f3150;
-    --accent: #3d9bff;
-    --accent-2: #5aaeff;
+    --accent: #4aa3ff;
+    --accent-2: #6db6ff;
     --accent-text: #021226;
     --good: #3ccf86;
     --warn: #f0b23c;
@@ -129,10 +129,10 @@ code { font-size: 12px; background: var(--surface-2); padding: 1px 5px; border-r
 .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .card-head h3 { margin: 0; }
 .card.hero {
-  background: linear-gradient(150deg, var(--brand-500), var(--brand-700) 55%, var(--brand-900));
-  color: #f2f7ff; border: 0;
+  background: linear-gradient(150deg, #4aa6ff, var(--brand-700) 60%, var(--brand-800));
+  color: #ffffff; border: 0;
 }
-.card.hero .eyebrow, .card.hero .muted { color: rgba(235, 244, 255, 0.78); }
+.card.hero .eyebrow, .card.hero .muted { color: rgba(255, 255, 255, 0.85); }
 .card.hero .pos { color: var(--hero-pos); }
 .card.hero .neg { color: var(--hero-neg); }
 .big { font-size: 40px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
@@ -293,7 +293,7 @@ details.mapping summary { font-weight: 600; font-size: 14px; }
 .splash-title { display: flex; flex-direction: column; align-items: center; line-height: 1.05; font-weight: 800; letter-spacing: -0.03em; }
 .splash-title span { opacity: 0; animation: word-in 0.5s ease forwards; }
 .splash-title .w1 { font-size: 34px; color: var(--brand-800); animation-delay: 0.35s; }
-.splash-title .w2 { font-size: 26px; color: var(--accent-2); animation-delay: 0.55s; }
+.splash-title .w2 { font-size: 30px; color: #1589fc; animation-delay: 0.55s; }
 @keyframes mark-in { from { transform: translate(-18px, 18px) scale(0.7); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes word-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes splash-out { to { opacity: 0; visibility: hidden; } }
@@ -387,3 +387,12 @@ button.goal { display: block; width: 100%; text-align: left; padding: 8px 0; }
 .streaks { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .badges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .big { overflow-wrap: anywhere; }
+
+/* money on the blue card: white text, with a small green/red badge for good/bad */
+.card.hero .mid.pos, .card.hero .mid.neg { display: inline-flex; align-items: center; gap: 6px; }
+.card.hero .mid.pos::before, .card.hero .mid.neg::before {
+  content: ""; width: 10px; height: 10px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+}
+.card.hero .mid.pos::before { background: #22c55e; }
+.card.hero .mid.neg::before { background: #ef4444; }
+.card.hero .perf.pos, .card.hero .perf.neg { color: #fff; }

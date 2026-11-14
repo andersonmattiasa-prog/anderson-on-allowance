@@ -2,11 +2,11 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Anderson on Allowance',
+  title: 'Anderson Ahead',
   description: 'Private, encrypted spending, budget and investing tracker.',
-  applicationName: 'Allowance',
+  applicationName: 'Anderson Ahead',
   robots: { index: false, follow: false },
-  appleWebApp: { capable: true, title: 'Allowance', statusBarStyle: 'black-translucent' },
+  appleWebApp: { capable: true, title: 'Anderson Ahead', statusBarStyle: 'black-translucent' },
   formatDetection: { telephone: false },
   icons: {
     icon: [{ url: '/icons/favicon-64.png', sizes: '64x64', type: 'image/png' }],

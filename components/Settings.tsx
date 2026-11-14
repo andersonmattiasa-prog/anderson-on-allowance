@@ -46,7 +46,7 @@ function Notifications() {
     <section className="card">
       <h3>Notifications</h3>
       {!pushSupported() ? (
-        <p className="muted small">Open Allowance from your Home Screen icon to turn on notifications (iPhone needs the installed app).</p>
+        <p className="muted small">Open Anderson Ahead from your Home Screen icon to turn on notifications (iPhone needs the installed app).</p>
       ) : (
         <div className="form">
           <button className={`btn wide ${on ? '' : 'primary'}`} disabled={busy || on === null} onClick={toggle}>
@@ -204,7 +204,7 @@ export default function Settings() {
             <details className="howto">
               <summary>✉️ Bank alert emails → Gmail</summary>
               <ol className="small">
-                <li>Go to <b>script.google.com</b> → New project. Name it “Allowance alerts”.</li>
+                <li>Go to <b>script.google.com</b> → New project. Name it “Anderson Ahead alerts”.</li>
                 <li>Paste the script below (it already contains your URL and sync key) and save. <Copy text={script} label="Copy script" /></li>
                 <li>Pick <code>install</code> in the function menu and press <b>Run</b>. Allow access to Gmail. It then checks every 5 minutes.</li>
                 <li>In Scotiabank InfoAlerts and CardWise, send purchase alerts to this Gmail address with a $1 threshold.</li>

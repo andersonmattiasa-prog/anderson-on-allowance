@@ -1,4 +1,4 @@
-# Anderson on Allowance
+# Anderson Ahead
 
 A private, end-to-end-encrypted spending, budget and investing tracker that installs on the iPhone Home Screen.
 
@@ -21,7 +21,7 @@ Data goes to `.data/store.json` in development.
 2. Vercel → Storage → Marketplace → **Upstash Redis** → connect it to the project (adds `KV_REST_API_URL` / `KV_REST_API_TOKEN`).
 3. Vercel → Settings → Environment Variables → add `SETUP_CODE` (any secret phrase, needed once to create the vault).
 4. Redeploy, open the URL on your iPhone in **Safari**, and create the vault.
-5. **Share → Add to Home Screen.** It opens full-screen as “Allowance”.
+5. **Share → Add to Home Screen.** It opens full-screen as “Anderson Ahead”.
 
 ## Syncing purchases
 

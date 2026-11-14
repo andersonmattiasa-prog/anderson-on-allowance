@@ -3,8 +3,8 @@ import type { MetadataRoute } from 'next';
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: '/',
-    name: 'Anderson on Allowance',
-    short_name: 'Allowance',
+    name: 'Anderson Ahead',
+    short_name: 'Anderson Ahead',
     description: 'Private, encrypted spending, budget and investing tracker.',
     start_url: '/',
     scope: '/',

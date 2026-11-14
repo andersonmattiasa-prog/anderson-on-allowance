@@ -12,7 +12,7 @@ async function chart(ticker: string, range: string, interval: string): Promise<C
   for (const host of ['query1', 'query2']) {
     try {
       const r = await fetch(`https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=${range}&interval=${interval}`, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Allowance/1.0)' },
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AndersonAhead/1.0)' },
         next: { revalidate: 300 },
       });
       if (!r.ok) continue;

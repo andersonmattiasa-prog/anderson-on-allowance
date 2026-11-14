@@ -1,4 +1,4 @@
-// Anderson on Allowance — forwards bank purchase alerts from Gmail.
+// Anderson Ahead — forwards bank purchase alerts from Gmail.
 const ENDPOINT = '__ENDPOINT__';
 const SYNC_KEY = '__SYNC_KEY__';
 const QUERY = 'from:(scotiabank OR cardwise OR collabria OR coastcapital) newer_than:2d';

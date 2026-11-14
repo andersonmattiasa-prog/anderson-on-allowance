@@ -1,6 +1,6 @@
 // Google Apps Script that forwards bank purchase alerts from Gmail to the app every 5 minutes.
 // Shown in Settings with the endpoint and sync key filled in. Also saved as scripts/gmail-alerts.gs.
-export const GMAIL_SCRIPT = `// Anderson on Allowance — forwards bank purchase alerts from Gmail.
+export const GMAIL_SCRIPT = `// Anderson Ahead — forwards bank purchase alerts from Gmail.
 const ENDPOINT = '__ENDPOINT__';
 const SYNC_KEY = '__SYNC_KEY__';
 const QUERY = 'from:(scotiabank OR cardwise OR collabria OR coastcapital) newer_than:2d';

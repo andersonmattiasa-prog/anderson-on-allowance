@@ -33,7 +33,7 @@ export function Unlock({ salt, onUnlock }: { salt: string; onUnlock: (s: Session
     <div className="lock">
       <form className="lock-card" ref={formRef} onSubmit={submit}>
         <img className="lock-mark" src="/icons/mark.png" alt="" width={64} height={65} />
-        <h1>Anderson on Allowance</h1>
+        <h1>Anderson Ahead</h1>
         <p className="muted">Your data is encrypted on this device. Enter your passphrase to unlock.</p>
         <input type="text" name="username" autoComplete="username" value="Allowance" readOnly hidden />
         <input className="input" type="password" name="passphrase" autoComplete="current-password" placeholder="Passphrase" autoFocus />

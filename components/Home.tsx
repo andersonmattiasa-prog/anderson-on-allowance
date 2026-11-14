@@ -89,7 +89,7 @@ export default function Home() {
       <header className="page-head">
         <div>
           <p className="eyebrow">{monthLabel(month)}</p>
-          <h1>Anderson on Allowance</h1>
+          <h1>Anderson Ahead</h1>
         </div>
         <button className="icon-btn gear" aria-label="Settings" onClick={() => setTab('settings')}>
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-1.7-1L15 3.5h-4L10.6 6a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.4z" /></svg>

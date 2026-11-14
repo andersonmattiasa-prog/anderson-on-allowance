@@ -51,7 +51,7 @@ export async function enablePush(token: string): Promise<string | null> {
   const { key } = await api<{ key: string | null }>('/api/push/key');
   if (!key) return 'Notifications aren’t set up on the server yet.';
   const perm = await Notification.requestPermission();
-  if (perm !== 'granted') return 'Notifications were not allowed. You can turn them on in iPhone Settings → Notifications → Allowance.';
+  if (perm !== 'granted') return 'Notifications were not allowed. You can turn them on in iPhone Settings → Notifications → Anderson Ahead.';
   const reg = (await navigator.serviceWorker.getRegistration()) ?? (await navigator.serviceWorker.register('/sw.js'));
   await navigator.serviceWorker.ready;
   const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64urlToBytes(key) as BufferSource });

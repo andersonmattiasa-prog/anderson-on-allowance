@@ -1,5 +1,5 @@
 // Service worker: makes the home-screen app open instantly and work offline (read-only), and shows push notifications.
-const CACHE = 'allowance-v2';
+const CACHE = 'allowance-v3';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/'])).catch(() => {}));
@@ -62,7 +62,7 @@ self.addEventListener('push', (e) => {
     d = { body: e.data && e.data.text() };
   }
   e.waitUntil(
-    self.registration.showNotification(d.title || 'Allowance', {
+    self.registration.showNotification(d.title || 'Anderson Ahead', {
       body: d.body || '',
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
