@@ -32,6 +32,7 @@ export default function App() {
   const [vault, setVault] = useState<Vault | null>(null);
   const [tab, setTabState] = useState<Tab>('home');
   const [sheet, setSheet] = useState<SheetState>(null);
+  const [checkin, setCheckin] = useState<string | null>(null);
   const [syncState, setSyncState] = useState<SyncState>('idle');
   const [remembered, setRememberedState] = useState(false);
   const [bootError, setBootError] = useState('');
@@ -344,9 +345,14 @@ export default function App() {
             setRemembered,
             toast,
             refreshQuotes,
+            checkin,
+            startCheckin: (m: string | null) => {
+              setCheckin(m);
+              if (m) setTab('insights');
+            },
           }
         : null,
-    [vault, update, syncState, meta, setTab, lock, syncNow, remembered, setRemembered, toast, refreshQuotes],
+    [vault, update, syncState, meta, setTab, lock, syncNow, remembered, setRemembered, toast, refreshQuotes, checkin],
   );
 
   const showSplash = !splashDone || phase === 'boot';

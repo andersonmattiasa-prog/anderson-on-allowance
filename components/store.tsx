@@ -22,6 +22,9 @@ export interface StoreValue {
   setRemembered: (on: boolean) => Promise<void>;
   toast: (msg: string) => void;
   refreshQuotes: (force?: boolean) => Promise<void>;
+  /** month whose check-in Insights should open */
+  checkin: string | null;
+  startCheckin: (month: string | null) => void;
 }
 
 export const StoreCtx = createContext<StoreValue | null>(null);

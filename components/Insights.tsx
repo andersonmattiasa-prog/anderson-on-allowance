@@ -1,5 +1,6 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { HoldingsSheet } from './Invest';
 import type { Review, Trip, Vault } from '@/lib/types';
 import { useMoney, useStore } from './store';
 import { Empty, Progress, Sheet, TxRow } from './ui';
@@ -14,7 +15,11 @@ import { fmt, toCur } from '@/lib/money';
 type View = { kind: 'main' } | { kind: 'trip'; id: string } | { kind: 'review'; month: string };
 
 export default function Insights() {
-  const [view, setView] = useState<View>({ kind: 'main' });
+  const { checkin, startCheckin } = useStore();
+  const [view, setView] = useState<View>(checkin ? { kind: 'review', month: checkin } : { kind: 'main' });
+  useEffect(() => {
+    if (checkin) startCheckin(null);
+  }, [checkin, startCheckin]);
   if (view.kind === 'trip') return <TripView id={view.id} back={() => setView({ kind: 'main' })} />;
   if (view.kind === 'review') return <ReviewView month={view.month} back={() => setView({ kind: 'main' })} />;
   return <Main open={setView} />;
@@ -116,8 +121,8 @@ function Main({ open }: { open: (v: View) => void }) {
 
       {d.needsReview && (
         <button className="card review-cta plain-card" onClick={() => open({ kind: 'review', month: d.lastMonth })}>
-          📝 <strong>Review {monthLabel(d.lastMonth, 'long')}</strong>
-          <span className="muted small"> — 3 minutes: what went well, and one change for this month.</span>
+          📝 <strong>Monthly check-in: {monthLabel(d.lastMonth, 'long')}</strong>
+          <span className="muted small"> — about 3 minutes.</span>
         </button>
       )}
 
@@ -155,7 +160,7 @@ function Main({ open }: { open: (v: View) => void }) {
           const s = tripSummary(v, t);
           return (
             <button key={t.id} className="row between list-line plain" onClick={() => open({ kind: 'trip', id: t.id })}>
-              <span>✈️ {t.name} <span className="muted small">· {parseDate(t.start).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span></span>
+              <span>✈️ {t.name} {t.start ? <span className="muted small">· {parseDate(t.start).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span> : null}</span>
               <span>{p(s.total, 0)} <span className="muted small">{fmt(toCur(s.total, v.settings.primary, v.settings.secondary, v.fx.rate), v.settings.secondary, { decimals: 0 })}</span></span>
             </button>
           );
@@ -224,7 +229,7 @@ function Main({ open }: { open: (v: View) => void }) {
 
       {v.reviews.length > 0 && (
         <section className="card">
-          <h3>Past reviews</h3>
+          <h3>Past check-ins</h3>
           {[...v.reviews].sort((a, b) => b.month.localeCompare(a.month)).map((r) => (
             <button key={r.month} className="row between list-line plain" onClick={() => open({ kind: 'review', month: r.month })}>
               <span>{monthLabel(r.month)}</span>
@@ -241,7 +246,7 @@ function Main({ open }: { open: (v: View) => void }) {
 
 function TripSheet({ trip, onClose }: { trip: Trip | null; onClose: (id?: string) => void }) {
   const { update } = useStore();
-  const [t, setT] = useState<Trip>(trip ?? { id: uid(), name: '', words: [], start: todayStr(), end: addDays(todayStr(), 3) });
+  const [t, setT] = useState<Trip>(trip ?? { id: uid(), name: '', words: [], start: '', end: '' });
   const [words, setWords] = useState((trip?.words ?? []).join(', '));
   return (
     <Sheet title={trip ? 'Edit trip' : 'New trip'} onClose={() => onClose()}>
@@ -249,11 +254,12 @@ function TripSheet({ trip, onClose }: { trip: Trip | null; onClose: (id?: string
         <label className="field"><span>Name</span><input className="input" value={t.name} placeholder="e.g. Paris" onChange={(e) => setT({ ...t, name: e.target.value })} /></label>
         <label className="field"><span>Place words (comma-separated)</span><input className="input" value={words} placeholder="paris, versailles" onChange={(e) => setWords(e.target.value)} /></label>
         <div className="row gap">
-          <label className="field grow"><span>From</span><input className="input" type="date" value={t.start} onChange={(e) => setT({ ...t, start: e.target.value })} /></label>
-          <label className="field grow"><span>To</span><input className="input" type="date" value={t.end} onChange={(e) => setT({ ...t, end: e.target.value })} /></label>
+          <label className="field grow"><span>From (optional)</span><input className="input" type="date" value={t.start} onChange={(e) => setT({ ...t, start: e.target.value })} /></label>
+          <label className="field grow"><span>To (optional)</span><input className="input" type="date" value={t.end} onChange={(e) => setT({ ...t, end: e.target.value })} /></label>
         </div>
+        <p className="muted small">With dates, everything you spend while away is added automatically. Without them, only purchases you link or that name the place count.</p>
         <button className="btn primary wide" onClick={() => {
-          if (!t.name || t.end < t.start) return;
+          if (!t.name || (!!t.start !== !!t.end) || (t.start && t.end < t.start)) return;
           const w = words.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
           const final = { ...t, words: w.length ? w : [t.name.toLowerCase()] };
           update((d) => void (d.trips = [...d.trips.filter((x) => x.id !== t.id), final]));
@@ -287,10 +293,10 @@ function TripView({ id, back }: { id: string; back: () => void }) {
     <div className="page">
       <button className="link back" onClick={back}>‹ Insights</button>
       <section className="card hero">
-        <p className="eyebrow">{parseDate(trip.start).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – {parseDate(trip.end).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+        <p className="eyebrow">{trip.start && trip.end ? `${parseDate(trip.start).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${parseDate(trip.end).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : 'Dates not set yet'}</p>
         <h1>{trip.name}</h1>
         <div className="big" style={{ marginTop: 8 }}>{p(sum.total)}</div>
-        <p className="muted small">{s(sum.total)} · {p(sum.total / sum.days, 0)} per day over {sum.days} day{sum.days > 1 ? 's' : ''}</p>
+        <p className="muted small">{s(sum.total)}{sum.days ? ` · ${p(sum.total / sum.days, 0)} per day over ${sum.days} day${sum.days > 1 ? 's' : ''}` : ''}</p>
       </section>
       <section className="card">
         <h3>By category</h3>
@@ -344,6 +350,8 @@ function ReviewView({ month, back }: { month: string; back: () => void }) {
   const [reflection, setReflection] = useState(existing?.reflection ?? '');
   const [change, setChange] = useState(existing?.change ?? '');
   const [stuck, setStuck] = useState<Review['stuck']>(prevReview?.stuck);
+  const [holdings, setHoldings] = useState(false);
+  const checkedInvest = v.lastInvestCheck && v.lastInvestCheck >= `${month}-20`;
 
   const pl = plan(v, month);
   const st = monthStats(v, month);
@@ -363,14 +371,14 @@ function ReviewView({ month, back }: { month: string; back: () => void }) {
       d.reviews = [...d.reviews.filter((r) => r.month !== month), { month, reflection, change, savedAt: Date.now() }];
       if (prevReview && stuck) d.reviews = d.reviews.map((r) => (r.month === prevReview.month ? { ...r, stuck } : r));
     });
-    toast('Review saved');
+    toast('Check-in done ✓');
     back();
   }
 
   return (
     <div className="page">
       <button className="link back" onClick={back}>‹ Insights</button>
-      <header className="page-head"><div><p className="eyebrow">Monthly review</p><h1>{monthLabel(month)}</h1></div></header>
+      <header className="page-head"><div><p className="eyebrow">Monthly check-in</p><h1>{monthLabel(month)}</h1></div></header>
       <section className={`card ${st.spent <= budget ? 'good-bg' : 'bad-bg'}`}>
         <strong>{st.spent <= budget ? `Under budget by ${p(budget - st.spent, 0)} 🎉` : `Over budget by ${p(st.spent - budget, 0)}`}</strong>
         <p className="small">Spent {p(st.spent, 0)} of {p(budget, 0)} (pay after investing).</p>
@@ -396,6 +404,13 @@ function ReviewView({ month, back }: { month: string; back: () => void }) {
           </div>
         </section>
       )}
+      <section className="card">
+        <h3>Update your investments</h3>
+        <p className="muted small">Share counts, cash, fund and Wealthsimple values, so net worth and your down payment stay accurate.</p>
+        <button className={`btn wide ${checkedInvest ? '' : 'primary'}`} style={{ marginTop: 8 }} onClick={() => setHoldings(true)}>
+          {checkedInvest ? '✓ Updated — open again' : 'Update investment values'}
+        </button>
+      </section>
       <section className="card form">
         <label className="field"><span>How did the month feel? What went well?</span>
           <textarea className="input" rows={3} value={reflection} onChange={(e) => setReflection(e.target.value)} />
@@ -403,8 +418,9 @@ function ReviewView({ month, back }: { month: string; back: () => void }) {
         <label className="field"><span>One change for next month</span>
           <input className="input" value={change} placeholder="e.g. Cook at home on Wednesdays" onChange={(e) => setChange(e.target.value)} />
         </label>
-        <button className="btn primary wide" onClick={save}>Save review</button>
+        <button className="btn primary wide" onClick={save}>Save check-in</button>
       </section>
+      {holdings && <HoldingsSheet onClose={() => setHoldings(false)} />}
     </div>
   );
 }

@@ -103,7 +103,6 @@ export default function Invest() {
     return { g, saved, months };
   });
   const proj = projection(pf.total, monthlyCad, v.settings.assumedReturn, 30);
-  const daysSinceCheck = v.lastInvestCheck ? Math.round((parseDate(today).getTime() - parseDate(v.lastInvestCheck).getTime()) / 864e5) : null;
   const stale = Object.values(v.quotes).length && v.quotes['CAD=X']?.date ? new Date(v.quotes['CAD=X'].date) : null;
 
   return (
@@ -113,12 +112,6 @@ export default function Invest() {
         <button className="btn small" onClick={() => refreshQuotes(true).then(() => toast('Prices updated'))}>Refresh prices</button>
       </header>
 
-      {(daysSinceCheck == null || daysSinceCheck > 30) && (
-        <div className="card alert warn">
-          📋 <strong>Monthly investment check.</strong> Update share counts, cash and fund values so everything stays accurate.{' '}
-          <button className="link" onClick={() => setSheet('holdings')}>Start</button>
-        </div>
-      )}
 
       <section className="card hero">
         <p className="eyebrow">Net worth</p>
@@ -252,7 +245,7 @@ export default function Invest() {
   );
 }
 
-function HoldingsSheet({ onClose }: { onClose: () => void }) {
+export function HoldingsSheet({ onClose }: { onClose: () => void }) {
   const { vault: v, update, refreshQuotes, toast } = useStore();
   const [positions, setPositions] = useState(v.positions.map((p) => ({ ...p })));
   const [values, setValues] = useState<Record<string, string>>(Object.fromEntries(v.holdings.map((h) => [h.id, latestValue(h)?.value?.toString() ?? ''])));
@@ -301,7 +294,7 @@ function HoldingsSheet({ onClose }: { onClose: () => void }) {
             <input className="input" inputMode="decimal" value={values[h.id] ?? ''} placeholder="Current value" onChange={(e) => setValues({ ...values, [h.id]: e.target.value })} />
           </label>
         ))}
-        <button className="btn primary wide" onClick={save}>Save — monthly check done</button>
+        <button className="btn primary wide" onClick={save}>Save investment values</button>
       </div>
     </Sheet>
   );

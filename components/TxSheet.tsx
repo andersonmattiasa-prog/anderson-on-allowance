@@ -6,6 +6,7 @@ import { Sheet } from './ui';
 import { categorize, learnRule, merchantKey } from '@/lib/categorize';
 import { fmt, parseAmount, round2 } from '@/lib/money';
 import { todayStr, uid } from '@/lib/util';
+import { tripOf } from '@/lib/trips';
 
 export default function TxSheet({ id, onClose }: { id?: string; onClose: () => void }) {
   const { vault: v, update, toast } = useStore();
@@ -21,6 +22,9 @@ export default function TxSheet({ id, onClose }: { id?: string; onClose: () => v
   const [category, setCategory] = useState(existing?.category ?? '');
   const [note, setNote] = useState(existing?.note ?? '');
   const [applyAll, setApplyAll] = useState(true);
+  const autoTrip = existing ? tripOf(v, existing)?.id ?? '' : '';
+  const [trip, setTrip] = useState(autoTrip);
+  const [newTripName, setNewTripName] = useState('');
 
   if (id && !existing) {
     return <Sheet title="Transaction" onClose={onClose}><p className="muted">This transaction no longer exists.</p></Sheet>;
@@ -34,12 +38,27 @@ export default function TxSheet({ id, onClose }: { id?: string; onClose: () => v
     if (!a || !a.amount) return toast('Enter an amount');
     if (!merchant.trim()) return toast('Enter where you spent it');
     const signed = round2(isIncome ? Math.abs(a.amount) : -Math.abs(a.amount));
+    if (trip === '__new' && !newTripName.trim()) return toast('Name the new trip');
     update((d) => {
+      // Trip: create one on the spot if asked, then link this purchase to it by hand.
+      let tripId = trip;
+      if (trip === '__new') {
+        const name = newTripName.trim();
+        const found = d.trips.find((x) => x.name.toLowerCase() === name.toLowerCase());
+        tripId = found?.id ?? uid();
+        if (!found) d.trips.push({ id: tripId, name, words: [name.toLowerCase()], start: '', end: '' });
+      }
+      const linkTrip = (t: Tx) => {
+        if (tripId === autoTrip && t.id === existing?.id) return;
+        t.trip = tripId || undefined;
+        t.tripLocked = true;
+      };
       if (existing) {
         const t = d.transactions.find((x) => x.id === existing.id);
         if (!t) return;
         if (t.amount !== signed || t.currency !== currency) t.charged = t.charged && t.currency === currency ? t.charged : undefined;
         Object.assign(t, { date, merchant: merchant.trim(), amount: signed, currency, account, note: note.trim() || undefined, updatedAt: Date.now() });
+        linkTrip(t);
         if (catChanged) {
           t.category = category;
           t.manualCat = true;
@@ -62,6 +81,7 @@ export default function TxSheet({ id, onClose }: { id?: string; onClose: () => v
           manualCat: !!category,
           updatedAt: Date.now(),
         };
+        if (tripId) linkTrip(tx);
         d.transactions.push(tx);
       }
     });
@@ -129,6 +149,23 @@ export default function TxSheet({ id, onClose }: { id?: string; onClose: () => v
             Always use this category for {existing!.merchant}{sameMerchantCount ? ` (${sameMerchantCount} other purchase${sameMerchantCount > 1 ? 's' : ''})` : ''}
           </label>
         )}
+        {!isIncome && (
+          <label className="field">
+            <span>Trip</span>
+            <select className="input" value={trip} onChange={(e) => setTrip(e.target.value)}>
+              <option value="">Not part of a trip</option>
+              {v.trips.map((t) => <option key={t.id} value={t.id}>✈️ {t.name}</option>)}
+              <option value="__new">＋ New trip…</option>
+            </select>
+          </label>
+        )}
+        {trip === '__new' && (
+          <label className="field">
+            <span>New trip name</span>
+            <input className="input" value={newTripName} placeholder="e.g. Prague" onChange={(e) => setNewTripName(e.target.value)} />
+          </label>
+        )}
+        {trip && <p className="muted small">Trip spending shows under Insights → Trips and doesn’t count against your daily net or weekly allowance.</p>}
         <label className="field">
           <span>Note</span>
           <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />

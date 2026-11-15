@@ -18,14 +18,15 @@ export function tripOf(v: Vault, t: Tx, cats = catMap(v)): Trip | null {
   const text = normText(`${t.merchant} ${t.description ?? ''}`);
   for (const trip of v.trips) {
     const words = trip.words.map(normText).filter((w) => w.trim());
-    // Purchases naming the destination count even if bought weeks before.
-    if (words.some((w) => text.includes(w)) && t.date >= addDays(trip.start, -120) && t.date <= addDays(trip.end, 7)) return trip;
+    // Purchases naming the destination count even if bought weeks before (any date if the trip has no dates yet).
+    const inWindow = !trip.start || !trip.end || (t.date >= addDays(trip.start, -120) && t.date <= addDays(trip.end, 7));
+    if (words.some((w) => text.includes(w)) && inWindow) return trip;
   }
   if (v.settings.homePlaces.some((h) => text.includes(normText(h)))) return null;
   if (ONLINE.test(text)) return null;
   for (const trip of v.trips) {
     // Everything spent during the trip (+1 day for card posting lag).
-    if (t.date >= trip.start && t.date <= addDays(trip.end, 1)) return trip;
+    if (trip.start && trip.end && t.date >= trip.start && t.date <= addDays(trip.end, 1)) return trip;
   }
   return null;
 }
@@ -36,13 +37,14 @@ export function tripSummary(v: Vault, trip: Trip) {
   const total = items.reduce((a, t) => a - inPrimary(v, t), 0);
   const byCat = new Map<string, number>();
   for (const t of items) byCat.set(t.category, (byCat.get(t.category) || 0) - inPrimary(v, t));
-  const days = diffDays(trip.end, trip.start) + 1;
+  const days = trip.start && trip.end ? diffDays(trip.end, trip.start) + 1 : null;
   return { items: items.sort((a, b) => a.date.localeCompare(b.date)), total, byCat, days };
 }
 
 /** Older travel bookings (train, hotel, flight sites) that might belong to this trip. */
 export function bookingSuggestions(v: Vault, trip: Trip): Tx[] {
   const cats = catMap(v);
+  if (!trip.start) return [];
   return v.transactions.filter(
     (t) =>
       t.amount < 0 && !t.tripLocked && t.date >= addDays(trip.start, -90) && t.date < trip.start &&

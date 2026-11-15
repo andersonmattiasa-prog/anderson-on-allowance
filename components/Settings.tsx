@@ -15,7 +15,7 @@ const NOTIFY_LABELS: [keyof NotifyPrefs, string][] = [
   ['allowance', 'Allowance at 80% and 100%, right after an Apple Pay purchase'],
   ['monday', 'Monday: this week’s allowance'],
   ['sunday', 'Sunday: week recap'],
-  ['review', 'Monthly review reminder (1st–3rd)'],
+  ['review', 'Monthly check-in (last day of the month, reminder on the 1st–3rd)'],
   ['challenge', 'Challenge start and last day'],
 ];
 

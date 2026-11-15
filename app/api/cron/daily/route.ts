@@ -39,8 +39,11 @@ export async function GET(req: Request) {
       tag: 'sunday',
     });
   }
-  if (p.review && plan.reviewPending && day <= 3) {
-    msgs.push({ title: 'Monthly review', body: `Take 3 minutes to review ${plan.reviewPending}.`, tag: 'review' });
+  const lastDay = new Date(y, m, 0).getDate();
+  if (p.review && day === lastDay) {
+    msgs.push({ title: 'Monthly check-in today 📋', body: 'About 3 minutes: how the month went, one change for next month, and your investment values.', tag: 'checkin' });
+  } else if (p.review && plan.reviewPending && day <= 3) {
+    msgs.push({ title: 'Monthly check-in', body: `Your ${plan.reviewPending} check-in is still open — about 3 minutes.`, tag: 'checkin' });
   }
   if (p.challenge && plan.challenge) {
     if (plan.challenge.start === date) msgs.push({ title: 'Challenge starts today', body: `${plan.challenge.name} — you've got this.`, tag: 'challenge' });

@@ -2,6 +2,7 @@ import type { Category, CatKind, Tx, Vault } from './types';
 import { toCur } from './money';
 import { addDays, addMonths, daysInMonth, diffDays, monthOf, parseDate, todayStr } from './util';
 import { merchantKey } from './categorize';
+import { tripOf } from './trips';
 
 export const catMap = (v: Vault) => new Map<string, Category>(v.categories.map((c) => [c.id, c]));
 export const inPrimary = (v: Vault, t: Pick<Tx, 'amount' | 'currency'>) => toCur(t.amount, t.currency, v.settings.primary, v.fx.rate);
@@ -32,7 +33,7 @@ export interface MerchantAgg {
 
 export function monthStats(v: Vault, month: string, uptoDay?: number) {
   const cats = catMap(v);
-  let spent = 0, variable = 0, fixedSpent = 0, income = 0, invested = 0;
+  let spent = 0, variable = 0, fixedSpent = 0, income = 0, invested = 0, tripSpent = 0;
   const byCat = new Map<string, number>();
   const byMerchant = new Map<string, MerchantAgg>();
   for (const t of v.transactions) {
@@ -43,6 +44,11 @@ export function monthStats(v: Vault, month: string, uptoDay?: number) {
     const a = inPrimary(v, t);
     if (SPENDING.includes(c.kind)) {
       spent -= a;
+      // Trips are planned spending: counted in the month's total, kept out of everyday spending.
+      if (c.kind === 'spend' && v.trips.length && tripOf(v, t, cats)) {
+        tripSpent -= a;
+        continue;
+      }
       if (c.kind === 'spend') variable -= a;
       else fixedSpent -= a;
       byCat.set(c.id, (byCat.get(c.id) || 0) - a);
@@ -56,7 +62,7 @@ export function monthStats(v: Vault, month: string, uptoDay?: number) {
     } else if (c.kind === 'income' && a > 0) income += a;
     else if (c.kind === 'invest') invested -= a;
   }
-  return { spent, variable, fixedSpent, income, invested, byCat, byMerchant };
+  return { spent, variable, fixedSpent, income, invested, tripSpent, byCat, byMerchant };
 }
 
 /** Everyday (non-fixed) spending per day, in the primary currency. */
@@ -65,6 +71,7 @@ export function dailyVariable(v: Vault): Map<string, number> {
   const out = new Map<string, number>();
   for (const t of v.transactions) {
     if (cats.get(t.category)?.kind !== 'spend') continue;
+    if (v.trips.length && tripOf(v, t, cats)) continue; // trips don't count against the day
     out.set(t.date, (out.get(t.date) || 0) - inPrimary(v, t));
   }
   return out;

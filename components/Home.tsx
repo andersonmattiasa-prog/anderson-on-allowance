@@ -8,6 +8,7 @@ import { monthsToGoal, portfolio } from '@/lib/invest';
 import { CHALLENGES, challengeStartDate, challengeStatus, streaks } from '@/lib/streaks';
 import { fmt, toCur } from '@/lib/money';
 import { Sheet } from './ui';
+import { checkinInfo } from '@/lib/checkin';
 
 function useInstallHint() {
   const [show, setShow] = useState(false);
@@ -171,7 +172,10 @@ export default function Home() {
         <p className="eyebrow">Everyday spending this month</p>
         <div className="big">{p(st.variable)}</div>
         <p className="muted small">{s(st.variable)} · last month by today: {p(d.lastByNow.variable, 0)}</p>
-        <p className="hero-fixed small">🏠 Rent &amp; bills: {p(st.fixedSpent, 0)}{st.fixedSpent >= pl.fixed - 1 ? ' — all paid' : ` of ${p(pl.fixed, 0)}`}</p>
+        <div className="hero-lines">
+          <span className="hero-fixed small">🏠 Rent &amp; bills: {p(st.fixedSpent, 0)}{st.fixedSpent >= pl.fixed - 1 ? ' — all paid' : ` of ${p(pl.fixed, 0)}`}</span>
+          {st.tripSpent > 0.5 && <span className="hero-fixed small">✈️ Trips: {p(st.tripSpent, 0)}</span>}
+        </div>
         <div className="split">
           <div>
             <p className="eyebrow">Left to spend</p>
@@ -205,7 +209,7 @@ export default function Home() {
         </p>
       </section>
 
-      <OtherAlerts />
+      <CheckinCard />
 
       <StreaksCard />
 
@@ -302,26 +306,25 @@ function GoalCard() {
   );
 }
 
-function OtherAlerts() {
-  const { vault: v, setTab } = useStore();
-  const today = todayStr();
-  const last = addMonths(monthOf(today), -1);
-  const needsReview = !v.reviews.some((r) => r.month === last) && v.transactions.some((t) => t.date.startsWith(last));
-  const hasHoldings = v.positions.some((p) => p.units > 0) || v.holdings.some((h) => h.values.length);
-  const checkDue = hasHoldings && (!v.lastInvestCheck || (parseDate(today).getTime() - parseDate(v.lastInvestCheck).getTime()) / 864e5 > 30);
+function CheckinCard() {
+  const { vault: v, startCheckin } = useStore();
+  const c = checkinInfo(v);
+  if (c.due && c.month) {
+    return (
+      <button className="card checkin due plain-card" onClick={() => startCheckin(c.month)}>
+        <div className="row between">
+          <strong>📋 Monthly check-in: {monthLabel(c.month, 'long')}</strong>
+          <span className="chip good">Start</span>
+        </div>
+        <p className="muted small">About 3 minutes: how the month went, one change for next month, and your investment values.</p>
+      </button>
+    );
+  }
   return (
-    <>
-      {needsReview && (
-        <button className="card alert warn plain-card" onClick={() => setTab('insights')}>
-          📝 <strong>Review {monthLabel(last, 'long')}</strong> — 3 minutes on what went well and one change.
-        </button>
-      )}
-      {checkDue && (
-        <button className="card alert plain-card" onClick={() => setTab('invest')}>
-          📋 <strong>Monthly investment check</strong> — update share counts and fund values.
-        </button>
-      )}
-    </>
+    <div className="card checkin">
+      📅 <strong>{c.daysTo === 0 ? 'Monthly check-in today' : `${c.daysTo} day${c.daysTo === 1 ? '' : 's'} to your monthly check-in`}</strong>
+      <span className="muted small"> · {parseDate(c.nextDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+    </div>
   );
 }
 
