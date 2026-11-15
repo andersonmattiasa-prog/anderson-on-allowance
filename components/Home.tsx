@@ -114,7 +114,7 @@ export default function Home() {
         <p className="eyebrow">Your daily net · today</p>
         <div className="net-big">{p(d.todayNet, 2, true)}</div>
         <div className="net-math small">
-          <span>Earned today <strong>{p(d.earnPerDay)}</strong></span>
+          <span>Free to spend today <strong>{p(d.earnPerDay)}</strong></span>
           <span className="net-op">−</span>
           <span>Spent today <strong>{p(d.spentToday)}</strong></span>
         </div>
@@ -136,7 +136,14 @@ export default function Home() {
           <span>{d.greenDaysWeek} of {d.daysSoFarWeek} days green this week{d.streak > 1 ? ` · 🔥 ${d.streak} in a row` : ''}</span>
           <span className={d.monthNet >= 0 ? 'pos' : 'neg'}>{p(d.monthNet, 0, true)} this month</span>
         </div>
-        <p className="muted small">“Earned today” is your pay per day after investing {v.settings.investPercent}% and a daily share of rent &amp; bills. Keep spending under it and every day stays green.</p>
+        <details className="net-why small">
+          <summary>How “free to spend today” is worked out</summary>
+          <div className="row between"><span>Pay per day ({p(pl.pay, 0)} ÷ {pl.dim} days)</span><span>{p(pl.dailyPay)}</span></div>
+          <div className="row between"><span>Investing {v.settings.investPercent}%</span><span>−{p(pl.dailyInvest)}</span></div>
+          <div className="row between"><span>Rent, bills &amp; subscriptions ({p(pl.fixed, 0)} a month)</span><span>−{p(pl.dailyFixed)}</span></div>
+          <div className="row between strong"><span>Free to spend today</span><span>{p(d.earnPerDay)}</span></div>
+          <p className="muted">Stay under it and the day is green. Change rent and bills in Budget, and the investing % in Settings.</p>
+        </details>
       </section>
 
       {install.show && (

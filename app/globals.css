@@ -419,3 +419,10 @@ button.goal { display: block; width: 100%; text-align: left; padding: 8px 0; }
 .net-op { font-weight: 700; }
 .net-msg { font-size: 15px; font-weight: 600; margin: 10px 0 6px; }
 .net-foot { margin: 2px 0 6px; font-weight: 600; }
+
+.net-why { margin-top: 6px; color: var(--muted); }
+.net-why summary { font-weight: 600; color: var(--accent); }
+.net-why[open] { display: flex; flex-direction: column; gap: 4px; }
+.net-why[open] summary { margin-bottom: 4px; }
+.net-why .row { color: var(--text); }
+.net-why .strong { border-top: 1px solid var(--line); padding-top: 4px; }
