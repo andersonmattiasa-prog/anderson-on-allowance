@@ -184,9 +184,11 @@ export default function Invest() {
         <p className="muted small">Transfers to Wealthsimple or Odlum Brown count automatically. Use + Log for anything else.</p>
       </section>
 
+      <AimsEditor />
+
       <section className="card">
         <div className="card-head">
-          <h3>Goals</h3>
+          <h3>Savings targets</h3>
           <button className="link" onClick={() => setSheet({ goal: null })}>+ Add</button>
         </div>
         {goals.map(({ g, saved, months }) => (
@@ -419,5 +421,38 @@ function GoalSheet({ goal, onClose }: { goal: Goal | null; onClose: () => void }
         {goal && <button className="btn danger wide" onClick={() => { update((d) => void (d.goals = d.goals.filter((x) => x.id !== g.id))); onClose(); }}>Remove goal</button>}
       </div>
     </Sheet>
+  );
+}
+
+function AimsEditor() {
+  const { vault: v, update, toast } = useStore();
+  const [text, setText] = useState((v.aims ?? []).join('\n'));
+  const [editing, setEditing] = useState(false);
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h3>My goals</h3>
+        {!editing && <button className="link" onClick={() => setEditing(true)}>Edit</button>}
+      </div>
+      {editing ? (
+        <div className="form">
+          <label className="field" htmlFor="aims-text"><span>One goal per line</span></label>
+          <textarea id="aims-text" className="input" rows={6} value={text} onChange={(e) => setText(e.target.value)} />
+          <div className="row gap">
+            <button className="btn primary grow" onClick={() => {
+              const aims = text.split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 12);
+              update((d) => void (d.aims = aims));
+              setEditing(false);
+              toast('Goals saved');
+            }}>Save goals</button>
+            <button className="btn grow" onClick={() => { setText((v.aims ?? []).join('\n')); setEditing(false); }}>Cancel</button>
+          </div>
+        </div>
+      ) : (v.aims ?? []).length ? (
+        <ul className="aims">{(v.aims ?? []).map((a) => <li key={a}>{a}</li>)}</ul>
+      ) : (
+        <p className="muted small">No goals written yet.</p>
+      )}
+    </section>
   );
 }

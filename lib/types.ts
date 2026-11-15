@@ -182,6 +182,8 @@ export interface Vault {
   /** opening balances for net worth, in the account's currency (cards negative = owed) */
   balances: Record<string, { date: string; balance: number }>;
   goals: Goal[];
+  /** written goals, in the owner's own words */
+  aims?: string[];
   reviews: Review[];
   challenges: Challenge[];
   investLog: InvestLogEntry[];

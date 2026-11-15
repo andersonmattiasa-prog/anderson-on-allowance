@@ -2,13 +2,20 @@
 import { useMemo, useState } from 'react';
 import { useMoney, useStore } from './store';
 import { Empty, TxRow } from './ui';
-import { inPrimary } from '@/lib/calc';
+import { catMap, inPrimary } from '@/lib/calc';
 import { dayLabel, normText } from '@/lib/util';
 
 const PAGE = 150;
 
 export default function Activity() {
-  const { vault: v, setSheet } = useStore();
+  const { vault: v, setSheet, syncNow, toast } = useStore();
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    setRefreshing(true);
+    await syncNow();
+    setRefreshing(false);
+    toast('Up to date');
+  };
   const { p } = useMoney();
   const [q, setQ] = useState('');
   const [account, setAccount] = useState('');
@@ -24,12 +31,14 @@ export default function Activity() {
   }, [v.transactions, q, account, category]);
 
   const groups = useMemo(() => {
-    const out: { date: string; items: typeof filtered; net: number }[] = [];
+    const cats = catMap(v);
+    const out: { date: string; items: typeof filtered; spent: number }[] = [];
     for (const t of filtered.slice(0, limit)) {
       let g = out[out.length - 1];
-      if (!g || g.date !== t.date) out.push((g = { date: t.date, items: [], net: 0 }));
+      if (!g || g.date !== t.date) out.push((g = { date: t.date, items: [], spent: 0 }));
       g.items.push(t);
-      g.net += inPrimary(v, t);
+      const kind = cats.get(t.category)?.kind;
+      if (kind === 'spend' || kind === 'fixed') g.spent -= inPrimary(v, t);
     }
     return out;
   }, [filtered, limit, v]);
@@ -38,7 +47,8 @@ export default function Activity() {
     <div className="page">
       <header className="page-head">
         <h1>Activity</h1>
-        <div className="row gap">
+        <div className="row gap-s">
+          <button className="btn small" onClick={refresh} disabled={refreshing} aria-label="Refresh">{refreshing ? '…' : '↻'}</button>
           <button className="btn small" onClick={() => setSheet({ type: 'import' })}>Import</button>
           <button className="btn small primary" onClick={() => setSheet({ type: 'add' })}>+ Add</button>
         </div>
@@ -61,7 +71,7 @@ export default function Activity() {
         <section key={g.date} className="day-group">
           <div className="day-head">
             <span>{dayLabel(g.date)}</span>
-            <span className="muted small">{p(g.net, 2, true)}</span>
+            <span className="muted small">{g.spent > 0.004 ? `${p(g.spent)} spent` : ''}</span>
           </div>
           <div className="card flush">{g.items.map((t) => <TxRow key={t.id} t={t} />)}</div>
         </section>

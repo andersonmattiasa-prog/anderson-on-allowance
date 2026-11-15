@@ -4,7 +4,7 @@ import { useMoney, useStore } from './store';
 import { Empty, Progress, TxRow } from './ui';
 import { cardAlerts, catMap, dailyVariable, dayNet, greenStreak, monthStats, plan, trend } from '@/lib/calc';
 import { addDays, addMonths, monthLabel, monthOf, parseDate, todayStr, weekdayShort, weekStart } from '@/lib/util';
-import { futureValue, monthsToGoal, portfolio } from '@/lib/invest';
+import { monthsToGoal, portfolio } from '@/lib/invest';
 import { CHALLENGES, challengeStartDate, challengeStatus, streaks } from '@/lib/streaks';
 import { fmt, toCur } from '@/lib/money';
 import { Sheet } from './ui';
@@ -82,7 +82,7 @@ export default function Home() {
   const allowanceLeft = pl.weekly - d.weekSpent;
   const allowanceTone = d.weekSpent > pl.weekly ? 'bad' : d.weekSpent > pl.weekly * 0.8 ? 'warn' : 'good';
   const maxNet = Math.max(pl.dailyPay * 0.6, ...d.weekNets.map((n) => Math.abs(n ?? 0)));
-  const maxTrend = Math.max(1, ...d.tr.map((x) => x.spent));
+  const maxTrend = Math.max(1, ...d.tr.map((x) => x.variable));
 
   return (
     <div className="page">
@@ -120,9 +120,10 @@ export default function Home() {
       )}
 
       <section className="card hero">
-        <p className="eyebrow">Spent this month</p>
-        <div className="big">{p(st.spent)}</div>
-        <p className="muted small">{s(st.spent)} · last month by today: {p(d.lastByNow.spent, 0)}</p>
+        <p className="eyebrow">Everyday spending this month</p>
+        <div className="big">{p(st.variable)}</div>
+        <p className="muted small">{s(st.variable)} · last month by today: {p(d.lastByNow.variable, 0)}</p>
+        <p className="hero-fixed small">🏠 Rent &amp; bills: {p(st.fixedSpent, 0)}{st.fixedSpent >= pl.fixed - 1 ? ' — all paid' : ` of ${p(pl.fixed, 0)}`}</p>
         <div className="split">
           <div>
             <p className="eyebrow">Left to spend</p>
@@ -216,12 +217,12 @@ export default function Home() {
       )}
 
       <section className="card">
-        <h3>Last 6 months</h3>
+        <h3>Everyday spending, last 6 months</h3>
         <div className="trend">
           {d.tr.map((x) => (
             <div key={x.month} className={`trend-col ${x.month === month ? 'current' : ''}`}>
-              <span className="trend-val">{x.spent > 0 ? p(x.spent, 0) : ''}</span>
-              <div className="trend-bar" style={{ height: `${(x.spent / maxTrend) * 90}px` }} />
+              <span className="trend-val">{x.variable > 0 ? p(x.variable, 0) : ''}</span>
+              <div className="trend-bar" style={{ height: `${(x.variable / maxTrend) * 90}px` }} />
               <span className="trend-label">{monthLabel(x.month, 'short')}</span>
             </div>
           ))}
@@ -241,31 +242,38 @@ export default function Home() {
 
 function GoalCard() {
   const { vault: v, setTab } = useStore();
+  const aims = v.aims ?? [];
   const goal = v.goals[0];
-  if (!goal) return null;
   const pf = portfolio(v);
-  const saved = goal.source === 'investments' ? pf.total : goal.saved || 0;
+  const saved = goal ? (goal.source === 'investments' ? pf.total : goal.saved || 0) : 0;
   const monthly = toCur((v.settings.income * v.settings.investPercent) / 100, v.settings.primary, 'CAD', v.fx.rate);
-  const months = monthsToGoal(saved, monthly, goal.target, v.settings.assumedReturn);
-  // "Skip one meal out a week" — average meal out over the last 3 months, invested for 10 years.
-  const cutoff = addDays(todayStr(), -90);
-  const meals = v.transactions.filter((t) => t.date >= cutoff && (t.category === 'eating-out' || t.category === 'takeaway') && t.amount < 0);
-  const avgMeal = meals.length ? meals.reduce((a, t) => a + Math.abs(toCur(t.amount, t.currency, 'CAD', v.fx.rate)), 0) / meals.length : 25;
-  const tenYears = futureValue((avgMeal * 52) / 12, 10, v.settings.assumedReturn);
+  const months = goal ? monthsToGoal(saved, monthly, goal.target, v.settings.assumedReturn) : null;
   const cad = (n: number) => fmt(n, 'CAD', { decimals: 0 });
+  if (!aims.length && !goal) return null;
   return (
-    <button className="card goal-card plain-card" onClick={() => setTab('invest')}>
-      <div className="row between">
-        <span className="eyebrow">{goal.icon} {goal.name}</span>
-        <span className="small muted">{Math.min(100, Math.round((saved / goal.target) * 100))}%</span>
+    <section className="card goals-card">
+      <div className="card-head">
+        <h3>My goals</h3>
+        <button className="link" onClick={() => setTab('invest')}>Edit</button>
       </div>
-      <div className="mid">{saved >= goal.target ? 'Goal reached 🎉' : `${cad(goal.target - saved)} to go`}</div>
-      <Progress value={saved} max={goal.target} tone="good" />
-      <p className="small muted">
-        {months != null && saved < goal.target ? `About ${months >= 12 ? `${(months / 12).toFixed(1)} years` : `${months} months`} at your current pace. ` : ''}
-        Skip one meal out a week = {cad(tenYears)} in 10 years.
-      </p>
-    </button>
+      {aims.length > 0 && (
+        <ul className="aims">
+          {aims.map((a) => <li key={a}>{a}</li>)}
+        </ul>
+      )}
+      {goal && (
+        <button className="goal-progress plain-card" onClick={() => setTab('invest')}>
+          <div className="row between small">
+            <span>{goal.icon} {goal.name}</span>
+            <span className="muted">{Math.min(100, Math.round((saved / goal.target) * 100))}% · {cad(saved)} of {cad(goal.target)}</span>
+          </div>
+          <Progress value={saved} max={goal.target} tone="good" />
+          {months != null && saved < goal.target && (
+            <p className="muted small">About {months >= 12 ? `${(months / 12).toFixed(1)} years` : `${months} months`} at your current pace.</p>
+          )}
+        </button>
+      )}
+    </section>
   );
 }
 

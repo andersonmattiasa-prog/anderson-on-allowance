@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { after } from 'next/server';
 import { bearer, getMeta, json, safeEqual, seal, sha256 } from '@/lib/server/auth';
 import { hlen, hset } from '@/lib/server/store';
 import { getPlan, localToday, savePlan, sendAll } from '@/lib/server/push';
@@ -6,6 +7,7 @@ import { parseAmount } from '@/lib/money';
 import { weekStart } from '@/lib/util';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 const SOURCES = new Set(['applepay', 'email', 'wise', 'manual']);
 const MAX_ITEMS = 2000;
@@ -32,7 +34,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ source: string
 
   const item = { id: randomUUID(), at: Date.now(), source, ...(await seal(meta.publicKey, payload)) };
   await hset('inbox', item.id, JSON.stringify(item));
-  if (source === 'applepay') await allowanceWarning(payload).catch(() => {});
+  // Reply to the iPhone right away; the allowance warning runs after the response is sent.
+  if (source === 'applepay') after(() => allowanceWarning(payload).catch(() => {}));
   return json({ ok: true });
 }
 

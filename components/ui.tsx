@@ -56,11 +56,11 @@ export function TxRow({ t }: { t: Tx }) {
         </span>
       </span>
       <span className="tx-amt">
-        <span className={amt > 0 ? 'pos' : ''}>{p(amt, 2, true)}</span>
+        <span className={amt > 0 ? 'pos' : ''}>{amt > 0 ? p(amt, 2, true) : p(-amt)}</span>
         {(foreign || t.charged) && (
           <span className="tx-sub">
-            {foreign ? fmt(t.amount, t.currency) : ''}
-            {t.charged ? `${foreign ? ' · ' : ''}charged ${fmt(t.charged.amount, t.charged.currency)}` : ''}
+            {foreign ? fmt(Math.abs(t.amount), t.currency) : ''}
+            {t.charged ? `${foreign ? ' · ' : ''}charged ${fmt(Math.abs(t.charged.amount), t.charged.currency)}` : ''}
           </span>
         )}
       </span>

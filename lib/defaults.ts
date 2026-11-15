@@ -60,8 +60,14 @@ export const DEFAULT_HOLDINGS: Holding[] = [
 
 export const DEFAULT_GOALS: Goal[] = [
   { id: 'home', name: 'Home down payment', icon: '🏡', target: 138000, source: 'investments' },
-  { id: 'trip', name: 'Next trip', icon: '✈️', target: 1500, source: 'manual', saved: 0 },
-  { id: 'emergency', name: 'Emergency fund', icon: '🛟', target: 5000, source: 'manual', saved: 0 },
+];
+
+export const DEFAULT_AIMS = [
+  'Know how much I spend each month and where it goes',
+  'Find what to cut back on and follow my budget',
+  'Invest part of every paycheck (15%)',
+  'Stay in the green every day',
+  'Save for a home down payment',
 ];
 
 export const DEFAULT_NOTIFY: NotifyPrefs = { cardDue: true, allowance: true, monday: true, sunday: true, review: true, challenge: true };
@@ -85,6 +91,7 @@ export function defaultVault(privateKeyJwk: JsonWebKey | null): Vault {
     quotes: {},
     balances: {},
     goals: DEFAULT_GOALS.map((g) => ({ ...g })),
+    aims: [...DEFAULT_AIMS],
     reviews: [],
     challenges: [],
     investLog: [],
@@ -113,6 +120,11 @@ export function normalize(raw: Partial<Vault> | null | undefined): Vault {
   if (!v.quotes || typeof v.quotes !== 'object') v.quotes = {};
   if (!v.balances || typeof v.balances !== 'object') v.balances = {};
   v.notify = { ...DEFAULT_NOTIFY, ...(raw?.notify || {}) };
+  if (!Array.isArray(v.aims)) {
+    // One-time update: written goals replace the old "Next trip" and "Emergency fund" targets.
+    v.aims = [...DEFAULT_AIMS];
+    v.goals = v.goals.filter((g) => !(g.id === 'trip' || g.id === 'emergency'));
+  }
   if (!v.fx || !v.fx.rate) v.fx = { rate: 1.57, date: '2000-01-01' };
   return v;
 }

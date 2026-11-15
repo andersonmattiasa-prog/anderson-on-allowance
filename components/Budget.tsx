@@ -8,8 +8,9 @@ import { fmt } from '@/lib/money';
 import { daysInMonth, monthLabel, monthOf, todayStr, uid } from '@/lib/util';
 
 export default function Budget() {
-  const { vault: v, update } = useStore();
+  const { vault: v, update, syncNow, toast } = useStore();
   const { p } = useMoney();
+  const [refreshing, setRefreshing] = useState(false);
   const month = monthOf(todayStr());
   const day = Number(todayStr().slice(8));
   const pl = plan(v, month);
@@ -40,6 +41,7 @@ export default function Budget() {
           <p className="eyebrow">{monthLabel(month)}</p>
           <h1>Budget</h1>
         </div>
+        <button className="btn small" disabled={refreshing} aria-label="Refresh" onClick={async () => { setRefreshing(true); await syncNow(); setRefreshing(false); toast('Up to date'); }}>{refreshing ? '…' : '↻ Refresh'}</button>
       </header>
 
       <section className="card">
@@ -59,7 +61,7 @@ export default function Budget() {
           <h3>Everyday spending</h3>
           <span className="muted small">{p(st.variable, 0)} spent</span>
         </div>
-        <p className="muted small">The marker shows how far through the month you are. Tap ★ to show a category on Home.</p>
+        <p className="muted small">Each bar fills as you spend. The thin line shows how far through the month you are, so a bar past the line means you’re ahead of pace. Tap a limit to change it. ★ shows the category on Home.</p>
         {spendCats.map((c) => {
           const spent = st.byCat.get(c.id) || 0;
           return (
@@ -69,14 +71,22 @@ export default function Budget() {
                   <button className={`star ${c.watch ? 'on' : ''}`} onClick={() => toggleWatch(c.id)} aria-label="Watch">★</button>
                   {c.icon} {c.name}
                 </span>
-                <span className="row gap-s small">
-                  <span className="muted">{p(spent, 0)} /</span>
-                  <input className="input tiny" inputMode="decimal" defaultValue={c.limit ?? ''} onBlur={(e) => setLimit(c.id, e.target.value)} aria-label={`${c.name} limit`} />
-                </span>
+                {c.limit ? (
+                  <span className={`chip ${spent > c.limit ? 'bad' : spent > c.limit * 0.8 ? 'warn' : 'good'}`}>
+                    {spent > c.limit ? `${p(spent - c.limit, 0)} over` : `${p(c.limit - spent, 0)} left`}
+                  </span>
+                ) : null}
               </div>
               <div className="pace-wrap">
                 <Progress value={spent} max={c.limit || 0} />
                 {c.limit ? <div className="pace" style={{ left: `${pace * 100}%` }} /> : null}
+              </div>
+              <div className="row between small budget-line">
+                <span className="muted">Spent <strong className="ink">{p(spent, 0)}</strong></span>
+                <label className="row gap-s muted">
+                  Monthly limit
+                  <input className="input tiny" inputMode="decimal" defaultValue={c.limit ?? ''} placeholder="none" onBlur={(e) => setLimit(c.id, e.target.value)} aria-label={`${c.name} monthly limit`} />
+                </label>
               </div>
             </div>
           );
@@ -88,12 +98,20 @@ export default function Budget() {
         {fixedCats.map((c) => {
           const spent = st.byCat.get(c.id) || 0;
           return (
-            <div key={c.id} className="row between list-line">
-              <span>{c.icon} {c.name}</span>
-              <span className="row gap-s small">
-                <span className="muted">{p(spent, 0)} / </span>
-                <input className="input tiny" inputMode="decimal" defaultValue={c.limit ?? ''} placeholder="—" onBlur={(e) => setLimit(c.id, e.target.value)} aria-label={`${c.name} budget`} />
-              </span>
+            <div key={c.id} className="list-line">
+              <div className="row between">
+                <span>{c.icon} {c.name}</span>
+                <span className="small">Paid <strong>{p(spent, 0)}</strong> this month</span>
+              </div>
+              {c.id !== 'rent' && (
+                <div className="row between small budget-line">
+                  <span />
+                  <label className="row gap-s muted">
+                    Monthly budget
+                    <input className="input tiny" inputMode="decimal" defaultValue={c.limit ?? ''} placeholder="none" onBlur={(e) => setLimit(c.id, e.target.value)} aria-label={`${c.name} monthly budget`} />
+                  </label>
+                </div>
+              )}
             </div>
           );
         })}
