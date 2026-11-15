@@ -406,3 +406,16 @@ button.goal { display: block; width: 100%; text-align: left; padding: 8px 0; }
 .aims li { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; line-height: 1.35; }
 .aims li::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-2); margin-top: 7px; flex: none; }
 .goal-progress { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); background: none; border-left: 0; border-right: 0; border-bottom: 0; }
+
+/* daily net */
+.net-card { border-width: 1.5px; }
+.net-card.green { border-color: color-mix(in srgb, var(--good) 45%, var(--line)); background: linear-gradient(180deg, var(--good-bg), var(--surface) 70%); }
+.net-card.red { border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); background: linear-gradient(180deg, var(--bad-bg), var(--surface) 70%); }
+.net-big { font-size: 40px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+.net-card.green .net-big { color: var(--good); }
+.net-card.red .net-big { color: var(--bad); }
+.net-math { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; color: var(--muted); margin-top: 4px; }
+.net-math strong { color: var(--text); }
+.net-op { font-weight: 700; }
+.net-msg { font-size: 15px; font-weight: 600; margin: 10px 0 6px; }
+.net-foot { margin: 2px 0 6px; font-weight: 600; }

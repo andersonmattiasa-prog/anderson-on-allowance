@@ -72,8 +72,20 @@ export default function Home() {
         insight = `${c.icon} ${c.name} is ${delta > 0 ? 'up' : 'down'} ${p(Math.abs(delta), 0)} vs. this point last month.`;
       }
     }
+    const earnPerDay = pl.dailyPay - pl.dailyInvest - pl.dailyFixed;
+    const spentToday = dv.get(today) || 0;
+    const todayNet = earnPerDay - spentToday;
+    const pastWeek = weekNets.filter((n): n is number => n != null);
+    const greenDaysWeek = pastWeek.filter((n) => n >= 0).length;
+    const streakNow = greenStreak(v, dv, today);
+    let netMsg: string;
+    if (spentToday < 0.01) netMsg = `No spending yet today — you're ${p(earnPerDay)} in the green. 🙌`;
+    else if (todayNet >= earnPerDay * 0.5) netMsg = `Nicely done — ${p(todayNet)} to spare today. 🌱`;
+    else if (todayNet >= 0) netMsg = `Still in the green, with ${p(todayNet)} to spare. Easy does it for the rest of the day.`;
+    else netMsg = `${p(-todayNet)} over today. A no-spend day tomorrow puts you right back in the green. 💪`;
     return {
-      pl, st, left, daysLeft, perDay: left / daysLeft, week, weekNets, monthNet, streak: greenStreak(v, dv, today),
+      earnPerDay, spentToday, todayNet, greenDaysWeek, daysSoFarWeek: pastWeek.length, netMsg,
+      pl, st, left, daysLeft, perDay: left / daysLeft, week, weekNets, monthNet, streak: streakNow,
       weekSpent, watch, places, tr, recent, insight, lastByNow, alerts: cardAlerts(v, today),
     };
   }, [v, month, day, today, p]);
@@ -97,6 +109,35 @@ export default function Home() {
       </header>
 
       <GoalCard />
+
+      <section className={`card net-card ${d.todayNet >= 0 ? 'green' : 'red'}`}>
+        <p className="eyebrow">Your daily net · today</p>
+        <div className="net-big">{p(d.todayNet, 2, true)}</div>
+        <div className="net-math small">
+          <span>Earned today <strong>{p(d.earnPerDay)}</strong></span>
+          <span className="net-op">−</span>
+          <span>Spent today <strong>{p(d.spentToday)}</strong></span>
+        </div>
+        <p className="net-msg">{d.netMsg}</p>
+        <div className="netbars">
+          {d.week.map((x, i) => {
+            const n = d.weekNets[i];
+            const h = n == null ? 0 : Math.max(4, (Math.abs(n) / maxNet) * 40);
+            return (
+              <div key={x} className={`netbar ${x === today ? 'today' : ''}`}>
+                <div className="netbar-up">{n != null && n >= 0 && <div className="bar good" style={{ height: h }} />}</div>
+                <div className="netbar-down">{n != null && n < 0 && <div className="bar bad" style={{ height: h }} />}</div>
+                <span className="netbar-label">{weekdayShort(x)}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="row between small net-foot">
+          <span>{d.greenDaysWeek} of {d.daysSoFarWeek} days green this week{d.streak > 1 ? ` · 🔥 ${d.streak} in a row` : ''}</span>
+          <span className={d.monthNet >= 0 ? 'pos' : 'neg'}>{p(d.monthNet, 0, true)} this month</span>
+        </div>
+        <p className="muted small">“Earned today” is your pay per day after investing {v.settings.investPercent}% and a daily share of rent &amp; bills. Keep spending under it and every day stays green.</p>
+      </section>
 
       {install.show && (
         <div className="card install">
@@ -138,29 +179,6 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="card">
-        <div className="card-head">
-          <h3>Daily net</h3>
-          <span className={`chip ${d.monthNet >= 0 ? 'good' : 'bad'}`}>{p(d.monthNet, 0, true)} this month</span>
-        </div>
-        <div className="netbars">
-          {d.week.map((x, i) => {
-            const n = d.weekNets[i];
-            const h = n == null ? 0 : Math.max(4, (Math.abs(n) / maxNet) * 44);
-            return (
-              <div key={x} className={`netbar ${x === addDays(todayStr(), 0) ? 'today' : ''}`}>
-                <div className="netbar-up">{n != null && n >= 0 && <div className="bar good" style={{ height: h }} />}</div>
-                <div className="netbar-down">{n != null && n < 0 && <div className="bar bad" style={{ height: h }} />}</div>
-                <span className="netbar-label">{weekdayShort(x)}</span>
-              </div>
-            );
-          })}
-        </div>
-        <p className="muted small">
-          Each day earns {p(pl.dailyPay - pl.dailyInvest - pl.dailyFixed)} after investing and a share of rent &amp; bills.
-          {d.streak > 0 ? ` 🔥 ${d.streak} green day${d.streak > 1 ? 's' : ''} in a row.` : ''}
-        </p>
-      </section>
 
       {d.alerts.map((a) => (
         <div key={a.account} className={`card alert ${a.autopay ? '' : a.days <= 1 ? 'bad' : 'warn'}`}>
